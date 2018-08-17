@@ -13,7 +13,7 @@ git clone https://github.com/vanallenlab/common_variant_filter
 
 To download via Dockerhub
 ```
-docker pull vanallenlab/common_variant_filter:1.0.0
+docker pull vanallenlab/common_variant_filter:0.1.0
 ```
 
 ## Using common_variant_filter
