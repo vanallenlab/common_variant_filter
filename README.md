@@ -1,4 +1,4 @@
-# Common Variant Filter
+# Common variant filter
 A simple filter to annotate and filter somatic variants based on their occurence in [ExAC](http://exac.broadinstitute.org/). This is similar to the filter applied in [VCF2MAF's common variant filter](https://github.com/mskcc/vcf2maf/blob/master/docs/vep_maf_readme.txt), as used by [AACR Project GENIE](http://cancerdiscovery.aacrjournals.org/content/7/8/818). A variant is filtered if at least 10 alleles containing that variant are present across any subpopulation in ExAC, unless it appears at a [known somatic site](https://github.com/mskcc/vcf2maf/blob/v1.6.12/data/known_somatic_sites.bed). 
 
 This filter was originally implemented by [Cyriac Kandoth](https://github.com/ckandoth) for [VCF2MAF](https://github.com/mskcc/vcf2maf). 
