@@ -104,6 +104,7 @@ whitelist_column_map = {0: MAPPED_CHR, 1: MAPPED_POS, 2: END_POSITION, 3:ALT}
 population_keys = [EXAC_AC_AFR, EXAC_AC_AMR, EXAC_AC_EAS, EXAC_AC_FIN, EXAC_AC_NFE, EXAC_AC_OTH, EXAC_AC_SAS]
 populations = [exac_column_map[x] for x in population_keys]
 
+
 def check_column_names(df, map):
     for column_name in map.keys():
         assert column_name in df.columns, \
@@ -113,9 +114,11 @@ def check_column_names(df, map):
 def read(handle, **kwargs):
     return pd.read_csv(handle, sep='\t', comment='#', dtype='object', **kwargs)
 
+
 def standard_read(handle, column_map, **kwargs):
     check_column_names(read(handle, nrows=3), column_map)
     return read(handle, encoding='latin-1', **kwargs).rename(columns=column_map)
+
 
 def apply_str(x):
     try:
@@ -123,17 +126,21 @@ def apply_str(x):
     except ValueError:
         return x.astype(str)
 
+
 def annotate_read_depth(series_alt_count, series_ref_count):
     return series_alt_count.astype(int).add(series_ref_count.astype(int))
 
+
 def get_idx_low_depth(series_depth, min_depth):
     return series_depth[series_depth.astype(int).le(int(min_depth))].index
+
 
 def get_idx_coding_classifications(series_classification):
     coding_classifications = [
         'Missense_Mutation', 'Nonsense_Mutation', 'Nonstop_Mutation', 'Splice_Site',
         'Frame_Shift_Ins', 'Frame_Shift_Del', 'In_Frame_Ins', 'In_Frame_Del']
     return series_classification[series_classification.isin(coding_classifications)].index
+
 
 def main(inputs):
     df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
@@ -169,7 +176,8 @@ def main(inputs):
     df = df.merge(exac, on=merge_cols, how='left')
 
     df.loc[:, populations] = df.loc[:, populations].fillna(0.0)
-    idx_common_exac = df[(df.loc[:, populations].astype(float) > 10.0).sum(axis=1) != 0].index
+
+    idx_common_exac = df[(df.loc[:, populations].astype(float) > float(inputs[min_exac_ac])).sum(axis=1) != 0].index
 
     df.loc[idx_read_depth, LOW_DEPTH] = 1.0
     df.loc[idx_coding, CODING] = 1.0
@@ -212,4 +220,5 @@ if __name__ == "__main__":
         min_depth: args.filter_read_depth
     }
 
+    print(inputs_dict)
     main(inputs_dict)

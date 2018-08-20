@@ -4,7 +4,7 @@ A simple filter to annotate and filter somatic variants based on their occurence
 This filter was originally implemented by [Cyriac Kandoth](https://github.com/ckandoth) for [VCF2MAF](https://github.com/mskcc/vcf2maf). 
 
 ## Getting common_variant_filter
-This codebase is available for download through this Github repository, the [v1.0.0 release](https://github.com/vanallenlab/phial/releases), and [Dockerhub](https://hub.docker.com/r/vanallenlab/phial/).
+This codebase is available for download through this Github repository and [Dockerhub](https://hub.docker.com/r/vanallenlab/common_variant_filter/).
 
 To download via Github
 ```
