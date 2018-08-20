@@ -14,6 +14,7 @@ REF_COUNT = 't_ref_count'
 ALT_COUNT = 't_alt_count'
 VAR_CLASS = 'Variant_Classification'
 
+sample_id = 'sample_id'
 maf_handle = 'maf_handle'
 exac_handle = 'exac_handle'
 whitelist_handle = 'whitelist_handle'
@@ -196,13 +197,16 @@ def main(inputs):
     df_pass = df.loc[idx_pass, :]
     df_reject = df.loc[idx_reject, :]
 
-    df_pass.to_csv('pass.txt', sep='\t', index=False)
-    df_reject.to_csv('reject.txt', sep='\t', index=False)
-    df.to_csv('testoutput.txt', sep='\t')
+    outname = ''.join([inputs[sample_id], '.common_variant_filter.pass.txt'])
+    df_pass.to_csv(outname, sep='\t', index=False)
+
+    outname = ''.join([inputs[sample_id], '.common_variant_filter.reject.txt'])
+    df_reject.to_csv(outname, sep='\t', index=False)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--id', help='Sample ID', required=True)
     parser.add_argument('--maf', help='MAF to annotate and filter', required=True)
     parser.add_argument('--exac', help='formatted exac', required=True)
     parser.add_argument('--whitelist', help='whitelist for somatic sites', default=False)
@@ -212,6 +216,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inputs_dict = {
+        sample_id: args.id,
         maf_handle: args.maf,
         exac_handle: args.exac,
         whitelist_handle: args.whitelist,
@@ -220,5 +225,6 @@ if __name__ == "__main__":
         min_depth: args.filter_read_depth
     }
 
+    print('Common variant filter')
     print(inputs_dict)
     main(inputs_dict)
