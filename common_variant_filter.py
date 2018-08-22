@@ -21,6 +21,8 @@ whitelist_handle = 'whitelist_handle'
 filter_syn = 'filter_syn'
 min_exac_ac = 'min_exac_ac'
 min_depth = 'min_depth'
+boolean_filter_noncoding = 'boolean_filter_noncoding'
+boolean_whitelist = 'boolean_disable_whitelist'
 
 EXAC_CHR = 'CHROM'
 EXAC_POS = 'POS'
@@ -180,7 +182,7 @@ def main(inputs):
     idx_coding = get_idx_coding_classifications(df[MAPPED_VAR_CLASS])
     idx_noncoding = idx_original.difference(idx_coding)
 
-    if inputs[whitelist_handle]:
+    if not inputs[boolean_whitelist]:
         df.loc[:, WL] = 0.0
 
         whitelist = read(inputs_dict[whitelist_handle], header=-1).rename(columns=whitelist_column_map)
@@ -203,7 +205,7 @@ def main(inputs):
     df.loc[idx_common, COMMON] = 1
 
     idx_reject = idx_read_depth.union(idx_common).union(idx_common)
-    if filter_syn:
+    if inputs[boolean_filter_noncoding]:
         idx_reject = idx_reject.union(idx_noncoding)
     idx_pass = idx_original.difference(idx_reject)
 
@@ -212,10 +214,10 @@ def main(inputs):
     df_pass = df.loc[idx_pass, :]
     df_reject = df.loc[idx_reject, :]
 
-    outname = ''.join([inputs[sample_id], '.common_variant_filter.pass.txt'])
+    outname = ''.join([inputs[sample_id], '.common_variant_filter.pass.maf'])
     df_pass.to_csv(outname, sep='\t', index=False)
 
-    outname = ''.join([inputs[sample_id], '.common_variant_filter.reject.txt'])
+    outname = ''.join([inputs[sample_id], '.common_variant_filter.reject.maf'])
     df_reject.to_csv(outname, sep='\t', index=False)
 
     write_integer(np.int(df.shape[0]), 'considered.txt')
@@ -225,24 +227,27 @@ def main(inputs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--id', help='Sample ID', required=True)
-    parser.add_argument('--maf', help='MAF to annotate and filter', required=True)
-    parser.add_argument('--exac', help='formatted exac', required=True)
-    parser.add_argument('--whitelist', help='whitelist for somatic sites', default=False)
-    parser.add_argument('--min_exac_ac', help='Minimum allele count across any population to filter', default=10)
-    parser.add_argument('--filter_syn', help='Removes syn variants. True/False', default=False)
-    parser.add_argument('--filter_read_depth', help='Filters based on specified read depth. Int.', default=0)
+    parser.add_argument('--id', type=str, required=True, help='Sample ID')
+    parser.add_argument('--maf', type=str, required=True, help='MAF to annotate and filter')
+    parser.add_argument('--min_exac_ac', type=int, required=False, default=10,
+                        help='Minimum allele count across any population to filter')
+    parser.add_argument('--min_filter_depth', type=int, required=False, default=0,
+                        help='Minimum coverage of variant to not be filtered')
+    parser.add_argument('--filter_noncoding', action='store_true', required=False, default=False,
+                        help='Filters non-coding variants')
+    parser.add_argument('--disable_wl', action='store_true', required=False, default=False,
+                        help='Will filter variants in whitelist if enabled')
     args = parser.parse_args()
-    # action='store_true'
 
     inputs_dict = {
         sample_id: args.id,
         maf_handle: args.maf,
-        exac_handle: args.exac,
-        whitelist_handle: args.whitelist,
         min_exac_ac: args.min_exac_ac,
-        min_depth: args.filter_read_depth,
-        filter_syn: args.filter_syn
+        min_depth: args.min_filter_depth,
+        boolean_filter_noncoding: args.filter_noncoding,
+        boolean_whitelist: args.disable_wl,
+        exac_handle: 'datasources/exac.expanded.r1.txt',
+        whitelist_handle: 'datasources/known_somatic_sites.bed'
     }
 
     print('Common variant filter')

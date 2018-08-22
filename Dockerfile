@@ -8,7 +8,7 @@ COPY requirements.txt /
 
 RUN conda install --yes -c conda-forge --file requirements.txt
 
-COPY datasources/ /
+COPY datasources /datasources/
 
 COPY README.md /
 
