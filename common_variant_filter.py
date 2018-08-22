@@ -143,10 +143,28 @@ def get_idx_coding_classifications(series_classification):
     return series_classification[series_classification.isin(coding_classifications)].index
 
 
+def rename_exac_cols(df):
+    colmap = {}
+    old_columns = df.columns[df.columns.str.lower().str.contains('exac')]
+    new_columns = ['_'.join([col, 'previous_annotation']) for col in old_columns]
+    for old, new in zip(old_columns, new_columns):
+        colmap[old] = new
+    return df.rename(columns=colmap)
+
+
+def write_integer(number, filename):
+    with open(filename, 'w') as f:
+        f.write('%d' % number)
+
+
 def main(inputs):
     df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
+    df = rename_exac_cols(df)
+
     exac = standard_read(inputs[exac_handle], exac_column_map, low_memory=False)
-    df.drop(df.columns[df.columns.str.lower().str.contains('exac')], axis=1, inplace=True)
+    merge_cols = [MAPPED_CHR, MAPPED_POS, MAPPED_REF, MAPPED_ALT]
+    df = df.merge(exac, on=merge_cols, how='left')
+    df.loc[:, populations] = df.loc[:, populations].fillna(0.0)
 
     df.loc[:, LOW_DEPTH] = np.nan
     df.loc[:, CODING] = np.nan
@@ -173,11 +191,6 @@ def main(inputs):
     else:
         idx_whitelist = pd.DataFrame().index
 
-    merge_cols = [MAPPED_CHR, MAPPED_POS, MAPPED_REF, MAPPED_ALT]
-    df = df.merge(exac, on=merge_cols, how='left')
-
-    df.loc[:, populations] = df.loc[:, populations].fillna(0.0)
-
     idx_common_exac = df[(df.loc[:, populations].astype(float) > float(inputs[min_exac_ac])).sum(axis=1) != 0].index
 
     df.loc[idx_read_depth, LOW_DEPTH] = 1.0
@@ -185,12 +198,14 @@ def main(inputs):
     df.loc[idx_whitelist, WL] = 1.0
     df.loc[idx_common_exac, EXAC_COMMON] = 1.0
 
-    idx_reject = idx_read_depth.union(idx_noncoding).union(idx_common_exac).difference(idx_whitelist)
-    idx_common = idx_common_exac.difference(idx_whitelist)
-    idx_pass = idx_original.difference(idx_reject)
-
     df[COMMON] = 0
+    idx_common = idx_common_exac.difference(idx_whitelist)
     df.loc[idx_common, COMMON] = 1
+
+    idx_reject = idx_read_depth.union(idx_common).union(idx_common)
+    if filter_syn:
+        idx_reject = idx_reject.union(idx_noncoding)
+    idx_pass = idx_original.difference(idx_reject)
 
     df.drop(whitelist_column_map[3], axis=1, inplace=True)
 
@@ -203,6 +218,10 @@ def main(inputs):
     outname = ''.join([inputs[sample_id], '.common_variant_filter.reject.txt'])
     df_reject.to_csv(outname, sep='\t', index=False)
 
+    write_integer(np.int(df.shape[0]), 'considered.txt')
+    write_integer(np.int(df_pass.shape[0]), 'passed.txt')
+    write_integer(np.int(df_reject.shape[0]), 'rejected.txt')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -211,18 +230,19 @@ if __name__ == "__main__":
     parser.add_argument('--exac', help='formatted exac', required=True)
     parser.add_argument('--whitelist', help='whitelist for somatic sites', default=False)
     parser.add_argument('--min_exac_ac', help='Minimum allele count across any population to filter', default=10)
-    parser.add_argument('--filter_syn', help='Removes syn variants. True/False', action='store_true', default=False)
+    parser.add_argument('--filter_syn', help='Removes syn variants. True/False', default=False)
     parser.add_argument('--filter_read_depth', help='Filters based on specified read depth. Int.', default=0)
     args = parser.parse_args()
+    # action='store_true'
 
     inputs_dict = {
         sample_id: args.id,
         maf_handle: args.maf,
         exac_handle: args.exac,
         whitelist_handle: args.whitelist,
-        filter_syn: args.filter_syn,
         min_exac_ac: args.min_exac_ac,
-        min_depth: args.filter_read_depth
+        min_depth: args.filter_read_depth,
+        filter_syn: args.filter_syn
     }
 
     print('Common variant filter')
