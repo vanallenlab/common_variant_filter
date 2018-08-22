@@ -39,10 +39,10 @@ workflow CommonVariantFilter {
     }
 
     output  {
-        commonfilterTask.passedMAF,
-        commonfilterTask.rejectedMAF,
-        commonfilterTask.consideredCount,
-        commonfilterTask.passCount,
+        commonfilterTask.passedMAF
+        commonfilterTask.rejectedMAF
+        commonfilterTask.consideredCount
+        commonfilterTask.passCount
         commonfilterTask.rejectCount
     }
 }
@@ -74,8 +74,8 @@ task commonfilterTask {
     }
 
     output  {
-        File passedMAF="${sampleID}.common_variant_filter.pass.maf"
-        File rejectedMAF="${sampleID}.common_variant_filter.reject.maf"
+        File passedMAF="${sampleId}.common_variant_filter.pass.maf"
+        File rejectedMAF="${sampleId}.common_variant_filter.reject.maf"
         String consideredCount=read_string("considered.txt")
 		String passCount=read_string("passed.txt")
 		String rejectCount=read_string("rejected.txt")
