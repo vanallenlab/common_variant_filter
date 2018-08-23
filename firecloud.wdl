@@ -7,8 +7,8 @@ workflow CommonVariantFilter {
     Boolean? disable_whitelist = false
     Boolean? filter_noncoding = false
 
-    String? disable_whitelist_str = if disable_whitelist then 'true' else 'false'
-    String? filter_noncoding_str = if filter_noncoding then 'true' else 'false'
+    String? disable_whitelist_str = if disable_whitelist == true then 'true' else 'false'
+    String? filter_noncoding_str = if filter_noncoding == true then 'true' else 'false'
 
     Int? RAM = 4
     Int? SSD = 25
