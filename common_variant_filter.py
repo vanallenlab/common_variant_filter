@@ -135,7 +135,7 @@ def annotate_read_depth(series_alt_count, series_ref_count):
 
 
 def get_idx_low_depth(series_depth, min_depth):
-    return series_depth[series_depth.astype(int).le(int(min_depth))].index
+    return series_depth[series_depth.astype(int).lt(int(min_depth))].index
 
 
 def get_idx_coding_classifications(series_classification):
@@ -173,6 +173,9 @@ def main(inputs):
     df.loc[:, WL] = np.nan
     df.loc[:, EXAC_COMMON] = 0.0
     idx_original = df.index
+
+    df[MAPPED_ALT_COUNT] = df[MAPPED_ALT_COUNT].fillna(0.0)
+    df[MAPPED_REF_COUNT] = df[MAPPED_REF_COUNT].fillna(0.0)
 
     df[DEPTH] = annotate_read_depth(df[MAPPED_ALT_COUNT], df[MAPPED_REF_COUNT])
     df.loc[:, LOW_DEPTH] = 0.0
