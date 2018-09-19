@@ -214,6 +214,8 @@ def main(inputs):
 
     df.drop(whitelist_column_map[3], axis=1, inplace=True)
 
+    df = df.rename(columns=output_column_map)
+
     df_pass = df.loc[idx_pass, :]
     df_reject = df.loc[idx_reject, :]
 
