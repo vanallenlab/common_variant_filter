@@ -67,7 +67,7 @@ task commonfilterTask {
         args+="--min_filter_depth "${min_filter_depth}" "
         if [ ${filter_noncoding} == 'true' ];
             then args+="--filter_noncoding "; fi
-        if [ ${disable_whitelist} == 'true';
+        if [ ${disable_whitelist} == 'true'];
             then args+="--disable_wl "; fi
 
         python /common_variant_filter.py --id ${sampleId} --maf ${maf} $args
