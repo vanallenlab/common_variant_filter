@@ -5,16 +5,18 @@ workflow CommonVariantFilter {
     Int? min_exac_ac = 10
     Int? min_filter_depth = 0
     Boolean? disable_whitelist = false
+    Boolean? disable_comment = false
     Boolean? filter_noncoding = false
 
     String? disable_whitelist_str = if disable_whitelist == true then 'true' else 'false'
+    String? disable_comment_str = if disable_comment == true then 'true' else 'false'
     String? filter_noncoding_str = if filter_noncoding == true then 'true' else 'false'
 
     Int? RAM = 4
     Int? SSD = 25
     Int? preemptible = 3
 
-    String? docker_tag = "1.0.0"
+    String? docker_tag = "1.0.3"
 
     meta {
         author: "Brendan Reardon"
@@ -39,11 +41,12 @@ workflow CommonVariantFilter {
     }
 
     output  {
-        commonfilterTask.passedMAF
-        commonfilterTask.rejectedMAF
-        commonfilterTask.consideredCount
-        commonfilterTask.passCount
-        commonfilterTask.rejectCount
+        File commonfilter_annotated_maf = commonfilterTask.annotatedMAF
+        File commonfilter_passed_maf = commonfilterTask.passedMAF
+        File commonfilter_rejected_maf = commonfilterTask.rejectedMAF
+        Int commonfilter_considered_count = commonfilterTask.consideredCount
+        Int commonfilter_pass_count = commonfilterTask.passCount
+        Int commonfilter_reject_count = commonfilterTask.rejectCount
     }
 }
 
@@ -54,6 +57,7 @@ task commonfilterTask {
     Int? min_exac_ac
     Int? min_filter_depth
     String? disable_whitelist
+    String? disable_comment
     String? filter_noncoding
 
     Int? RAM
@@ -69,8 +73,12 @@ task commonfilterTask {
             then args+="--filter_noncoding "; fi
         if [ ${disable_whitelist} == 'true'];
             then args+="--disable_wl "; fi
+        if [ ${disable_comment} == 'true'];
+            then args+="--disable_comment "; fi
 
-        python /common_variant_filter.py --id ${sampleId} --maf ${maf} $args
+        sed '/^#/ d' < ${maf} > uncommented_maf.maf
+
+        python /common_variant_filter.py --id ${sampleId} --maf uncommented_maf.maf $args
     }
 
     output  {

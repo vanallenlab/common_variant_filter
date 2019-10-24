@@ -23,6 +23,7 @@ min_exac_ac = 'min_exac_ac'
 min_depth = 'min_depth'
 boolean_filter_noncoding = 'boolean_filter_noncoding'
 boolean_whitelist = 'boolean_disable_whitelist'
+boolean_comment = 'boolean_disable_comment'
 
 EXAC_CHR = 'CHROM'
 EXAC_POS = 'POS'
@@ -102,7 +103,7 @@ exac_column_map = {
 
 }
 
-whitelist_column_map = {0: MAPPED_CHR, 1: MAPPED_POS, 2: END_POSITION, 3:ALT}
+whitelist_column_map = {0: MAPPED_CHR, 1: MAPPED_POS, 2: END_POSITION, 3: ALT}
 
 population_keys = [EXAC_AC_AFR, EXAC_AC_AMR, EXAC_AC_EAS, EXAC_AC_FIN, EXAC_AC_NFE, EXAC_AC_OTH, EXAC_AC_SAS]
 populations = [exac_column_map[x] for x in population_keys]
@@ -115,11 +116,11 @@ def check_column_names(df, map):
 
 
 def read(handle, **kwargs):
-    return pd.read_csv(handle, sep='\t', comment='#', dtype='object', **kwargs)
+    return pd.read_csv(handle, sep='\t', dtype='object', **kwargs)
 
 
 def standard_read(handle, column_map, **kwargs):
-    check_column_names(read(handle, nrows=3), column_map)
+    check_column_names(read(handle, nrows=3, **kwargs), column_map)
     return read(handle, encoding='latin-1', **kwargs).rename(columns=column_map)
 
 
@@ -160,7 +161,10 @@ def write_integer(number, filename):
 
 
 def main(inputs):
-    df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
+    if inputs[boolean_comment]:
+        df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
+    else:
+        df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False, comment='#')
     df = rename_exac_cols(df)
 
     exac = standard_read(inputs[exac_handle], exac_column_map, low_memory=False)
@@ -188,7 +192,7 @@ def main(inputs):
     if not inputs[boolean_whitelist]:
         df.loc[:, WL] = 0.0
 
-        whitelist = read(inputs_dict[whitelist_handle], header=-1).rename(columns=whitelist_column_map)
+        whitelist = read(inputs_dict[whitelist_handle], header=-1, comment='#').rename(columns=whitelist_column_map)
         df[whitelist_column_map[3]] = df[MAPPED_GENE].astype(str) + ':' + \
                                       df[MAPPED_AA].str.split('p.', expand=True).loc[:, 1].astype(str)
         df[whitelist_column_map[3]] = df[whitelist_column_map[3]].fillna('')
@@ -219,6 +223,9 @@ def main(inputs):
     df_pass = df.loc[idx_pass, :]
     df_reject = df.loc[idx_reject, :]
 
+    outname = ''.join([inputs[sample_id], '.common_variant_filter.annotated.maf'])
+    df.to_csv(outname, sep='\t', index=False)
+
     outname = ''.join([inputs[sample_id], '.common_variant_filter.pass.maf'])
     df_pass.to_csv(outname, sep='\t', index=False)
 
@@ -242,6 +249,8 @@ if __name__ == "__main__":
                         help='Filters non-coding variants')
     parser.add_argument('--disable_wl', action='store_true', required=False, default=False,
                         help='Will filter variants in whitelist if enabled')
+    parser.add_argument('--disable_comment', action='store_true', required=False, default=False,
+                        help='Disables reading the dataframe into pandas with comment="#"')
     args = parser.parse_args()
 
     inputs_dict = {
@@ -251,6 +260,7 @@ if __name__ == "__main__":
         min_depth: args.min_filter_depth,
         boolean_filter_noncoding: args.filter_noncoding,
         boolean_whitelist: args.disable_wl,
+        boolean_comment: args.disable_comment,
         exac_handle: 'datasources/exac.expanded.r1.txt',
         whitelist_handle: 'datasources/known_somatic_sites.bed'
     }
