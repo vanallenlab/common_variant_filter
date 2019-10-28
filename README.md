@@ -24,11 +24,11 @@ common_variant_filter accepts the following arguments
 - `min_filter_depth`: (Optional) Default `0`, minimum coverage of variant to not be filtered
 - `filter_noncoding`: (Optional) Default `False`, filters non-coding variants
 - `disable_wl`: (Optional) Default `False`, will disable the whitelist
-- `disable_comment`: (Optional) Default `False`, will disable the argument `comment="#"` when reading tables into pandas  
+- `hashtagged_header`: (Optional) Default `False`, will read into pandas with `comment="#"` to remove MAF header. 
 
 An example run command would be the following,
 
-`python /common_variant_filter.py --id $sampleId --maf $maf --min_exac_ac 10 --min_filter_depth 0 --filter_noncoding --disable_wl --disable_comment`
+`python /common_variant_filter.py --id $sampleId --maf $maf --min_exac_ac 10 --min_filter_depth 0 --filter_noncoding --disable_wl --hashtagged_header`
 
 ## References
 1. [Lek M, Karczewski KJ, Minikel EV, et al. Analysis of protein-coding genetic variation in 60,706 humans. Nature. 2016;536(7616):285-91.](https://www.nature.com/articles/nature19057)

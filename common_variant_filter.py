@@ -23,7 +23,7 @@ min_exac_ac = 'min_exac_ac'
 min_depth = 'min_depth'
 boolean_filter_noncoding = 'boolean_filter_noncoding'
 boolean_whitelist = 'boolean_disable_whitelist'
-boolean_comment = 'boolean_disable_comment'
+comment = 'comment'
 
 EXAC_CHR = 'CHROM'
 EXAC_POS = 'POS'
@@ -109,8 +109,8 @@ population_keys = [EXAC_AC_AFR, EXAC_AC_AMR, EXAC_AC_EAS, EXAC_AC_FIN, EXAC_AC_N
 populations = [exac_column_map[x] for x in population_keys]
 
 
-def check_column_names(df, map):
-    for column_name in map.keys():
+def check_column_names(df, column_map):
+    for column_name in column_map.keys():
         assert column_name in df.columns, \
             'Expected column %s not found among %s' % (column_name, df.columns)
 
@@ -161,10 +161,10 @@ def write_integer(number, filename):
 
 
 def main(inputs):
-    if inputs[boolean_comment]:
-        df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
-    else:
+    if inputs[comment]:
         df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False, comment='#')
+    else:
+        df = standard_read(inputs[maf_handle], maf_column_map, low_memory=False)
     df = rename_exac_cols(df)
 
     exac = standard_read(inputs[exac_handle], exac_column_map, low_memory=False)
@@ -238,6 +238,8 @@ def main(inputs):
 
 
 if __name__ == "__main__":
+    print('WORK ALREADY')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=str, required=True, help='Sample ID')
     parser.add_argument('--maf', type=str, required=True, help='MAF to annotate and filter')
@@ -249,18 +251,20 @@ if __name__ == "__main__":
                         help='Filters non-coding variants')
     parser.add_argument('--disable_wl', action='store_true', required=False, default=False,
                         help='Will filter variants in whitelist if enabled')
-    parser.add_argument('--disable_comment', action='store_true', required=False, default=False,
-                        help='Disables reading the dataframe into pandas with comment="#"')
+    parser.add_argument('--hashtagged_header', action='store_true', required=False, default=False,
+                        help='Pass this variable if a header is present in the MAF, will remove rows beginning with #')
     args = parser.parse_args()
+
+    print('helloooo')
 
     inputs_dict = {
         sample_id: args.id,
         maf_handle: args.maf,
         min_exac_ac: args.min_exac_ac,
         min_depth: args.min_filter_depth,
+        comment: args.hashtagged_header,
         boolean_filter_noncoding: args.filter_noncoding,
         boolean_whitelist: args.disable_wl,
-        boolean_comment: args.disable_comment,
         exac_handle: 'datasources/exac.expanded.r1.txt',
         whitelist_handle: 'datasources/known_somatic_sites.bed'
     }
