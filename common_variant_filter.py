@@ -238,8 +238,6 @@ def main(inputs):
 
 
 if __name__ == "__main__":
-    print('WORK ALREADY')
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=str, required=True, help='Sample ID')
     parser.add_argument('--maf', type=str, required=True, help='MAF to annotate and filter')
@@ -254,8 +252,6 @@ if __name__ == "__main__":
     parser.add_argument('--hashtagged_header', action='store_true', required=False, default=False,
                         help='Pass this variable if a header is present in the MAF, will remove rows beginning with #')
     args = parser.parse_args()
-
-    print('helloooo')
 
     inputs_dict = {
         sample_id: args.id,
