@@ -6,7 +6,6 @@ workflow CommonVariantFilter {
     Int min_filter_depth = 0
     Boolean? disable_whitelist = false
     Boolean? filter_noncoding = false
-    Boolean? hashtagged_header = false
 
     Int RAM = 8
     Int SSD = 60
@@ -30,7 +29,6 @@ workflow CommonVariantFilter {
             min_filter_depth=min_filter_depth,
             disable_whitelist=disable_whitelist,
             filter_noncoding=filter_noncoding,
-            hashtagged_header=hashtagged_header,
             RAM=RAM,
             SSD=SSD,
             preemptible=preemptible,
@@ -55,7 +53,6 @@ task commonfilterTask {
     Int min_filter_depth
     Boolean? disable_whitelist
     Boolean? filter_noncoding
-    Boolean? hashtagged_header
 
     Int? RAM
     Int? SSD
@@ -68,7 +65,6 @@ task commonfilterTask {
         args+="--min_filter_depth "${min_filter_depth}" "
         args+=${true="--filter_noncoding" false="" filter_noncoding}" "
         args+=${true="--disable_wl" false="" disable_whitelist}" "
-        args+=${true="--hashtagged_header " false="" hashtagged_header}
 
         sed '/^#/ d' < ${maf} > uncommented_maf.maf
         python /common_variant_filter.py --id ${sampleId} --maf uncommented_maf.maf $args
