@@ -17,12 +17,12 @@ VAR_CLASS = 'Variant_Classification'
 sample_id = 'sample_id'
 maf_handle = 'maf_handle'
 exac_handle = 'exac_handle'
-whitelist_handle = 'whitelist_handle'
+known_sites_handle = 'known_sites_handle'
 filter_syn = 'filter_syn'
 min_exac_ac = 'min_exac_ac'
 min_depth = 'min_depth'
 boolean_filter_noncoding = 'boolean_filter_noncoding'
-boolean_whitelist = 'boolean_disable_whitelist'
+boolean_allow_list = 'boolean_disable_allow_list'
 comment = 'comment'
 
 EXAC_CHR = 'CHROM'
@@ -58,7 +58,7 @@ MAPPED_REF_COUNT = 'ref_count'
 MAPPED_ALT_COUNT = 'alt_count'
 
 EXAC_COMMON = 'exac_common'
-WL = 'whitelist'
+KNOWN_SITE = 'known_site'
 DEPTH = 'read_depth'
 LOW_DEPTH = 'low_read_depth'
 CODING = 'coding'
@@ -103,7 +103,7 @@ exac_column_map = {
 
 }
 
-whitelist_column_map = {0: MAPPED_CHR, 1: MAPPED_POS, 2: END_POSITION, 3: ALT}
+known_sites_column_map = {0: MAPPED_CHR, 1: MAPPED_POS, 2: END_POSITION, 3: ALT}
 
 population_keys = [EXAC_AC_AFR, EXAC_AC_AMR, EXAC_AC_EAS, EXAC_AC_FIN, EXAC_AC_NFE, EXAC_AC_OTH, EXAC_AC_SAS]
 populations = [exac_column_map[x] for x in population_keys]
@@ -146,6 +146,49 @@ def get_idx_coding_classifications(series_classification):
     return series_classification[series_classification.isin(coding_classifications)].index
 
 
+def format_substitution_variants(series):
+    return series[~series.str.contains('fs')].str[:-1]
+
+
+def format_frameshift_variants(series):
+    return series[series.str.contains('fs')]
+
+
+def format_protein_change(series):
+    idx_not_ins = series[~series.fillna('').str.contains('ins')].index
+    idx_not_del = series[~series.fillna('').str.contains('del')].index
+    idx_not_underscore = series[~series.fillna('').str.contains('_')].index
+    idx_candidates = idx_not_ins.intersection(idx_not_del).intersection(idx_not_underscore)
+    candidates = series.loc[idx_candidates].dropna()
+
+    substitution_candidates = format_substitution_variants(candidates)
+    frameshift_candidates = format_frameshift_variants(candidates)
+    return (pd
+            .concat([substitution_candidates, frameshift_candidates])
+            .str.replace('p.', '')
+            )
+
+
+def list_observed_events(dataframe):
+    codons = format_protein_change(dataframe[MAPPED_AA])
+    return dataframe.loc[codons.index, MAPPED_GENE] + ':' + codons
+
+
+def list_known_events(dataframe):
+    allowed_list_events = []
+    for item in dataframe[known_sites_column_map[3]].str.split(',').tolist():
+        allowed_list_events.extend(item)
+    allowed_list_events = sorted(list(set(allowed_list_events)))
+    return allowed_list_events
+
+
+def get_idx_allowed_list(datasource, dataframe):
+    known_events = list_known_events(datasource)
+    observed_events = list_observed_events(dataframe)
+    idx = observed_events.isin(known_events)
+    return idx[idx].index
+
+
 def rename_exac_cols(df):
     colmap = {}
     old_columns = df.columns[df.columns.str.lower().str.contains('exac')]
@@ -174,7 +217,7 @@ def main(inputs):
 
     df.loc[:, LOW_DEPTH] = np.nan
     df.loc[:, CODING] = np.nan
-    df.loc[:, WL] = np.nan
+    df.loc[:, KNOWN_SITE] = np.nan
     df.loc[:, EXAC_COMMON] = 0.0
     idx_original = df.index
 
@@ -189,26 +232,25 @@ def main(inputs):
     idx_coding = get_idx_coding_classifications(df[MAPPED_VAR_CLASS])
     idx_noncoding = idx_original.difference(idx_coding)
 
-    if not inputs[boolean_whitelist]:
-        df.loc[:, WL] = 0.0
+    if not inputs[boolean_allow_list]:
+        df.loc[:, KNOWN_SITE] = 0.0
 
-        whitelist = read(inputs_dict[whitelist_handle], header=-1, comment='#').rename(columns=whitelist_column_map)
-        df[whitelist_column_map[3]] = df[MAPPED_GENE].astype(str) + ':' + \
-                                      df[MAPPED_AA].str.split('p.', expand=True).loc[:, 1].astype(str)
-        df[whitelist_column_map[3]] = df[whitelist_column_map[3]].fillna('')
-        idx_whitelist = df[df[whitelist_column_map[3]].isin(whitelist[whitelist_column_map[3]])].index
+        known_sites = (read(inputs_dict[known_sites_handle], header=None, comment='#')
+                       .rename(columns=known_sites_column_map)
+                       )
+        idx_allow_list = get_idx_allowed_list(known_sites, df)
     else:
-        idx_whitelist = pd.DataFrame().index
+        idx_allow_list = pd.DataFrame().index
 
     idx_common_exac = df[(df.loc[:, populations].astype(float) > float(inputs[min_exac_ac])).sum(axis=1) != 0].index
 
     df.loc[idx_read_depth, LOW_DEPTH] = 1.0
     df.loc[idx_coding, CODING] = 1.0
-    df.loc[idx_whitelist, WL] = 1.0
+    df.loc[idx_allow_list, KNOWN_SITE] = 1.0
     df.loc[idx_common_exac, EXAC_COMMON] = 1.0
 
     df[COMMON] = 0
-    idx_common = idx_common_exac.difference(idx_whitelist)
+    idx_common = idx_common_exac.difference(idx_allow_list)
     df.loc[idx_common, COMMON] = 1
 
     idx_reject = idx_read_depth.union(idx_common).union(idx_common)
@@ -216,7 +258,8 @@ def main(inputs):
         idx_reject = idx_reject.union(idx_noncoding)
     idx_pass = idx_original.difference(idx_reject)
 
-    df.drop(whitelist_column_map[3], axis=1, inplace=True)
+    if known_sites_column_map[3] in df.columns.tolist():
+        df.drop(known_sites_column_map[3], axis=1, inplace=True)
 
     df = df.rename(columns=output_column_map)
 
@@ -247,8 +290,11 @@ if __name__ == "__main__":
                         help='Minimum coverage of variant to not be filtered')
     parser.add_argument('--filter_noncoding', action='store_true', required=False, default=False,
                         help='Filters non-coding variants')
+    parser.add_argument('--disable_known_sites', action='store_true', required=False, default=False,
+                        help='Will filter variants that appear in known sites if enabled')
     parser.add_argument('--disable_wl', action='store_true', required=False, default=False,
-                        help='Will filter variants in whitelist if enabled')
+                        help='Will filter variants that appear in known sites if enabled, equivalent to '
+                             '--disable_known_sites')
     parser.add_argument('--hashtagged_header', action='store_true', required=False, default=False,
                         help='Pass this variable if a header is present in the MAF, will remove rows beginning with #')
     args = parser.parse_args()
@@ -260,9 +306,9 @@ if __name__ == "__main__":
         min_depth: args.min_filter_depth,
         comment: args.hashtagged_header,
         boolean_filter_noncoding: args.filter_noncoding,
-        boolean_whitelist: args.disable_wl,
+        boolean_allow_list: (args.disable_known_sites | args.disable_wl),
         exac_handle: 'datasources/exac.expanded.r1.txt',
-        whitelist_handle: 'datasources/known_somatic_sites.bed'
+        known_sites_handle: 'datasources/known_somatic_sites.bed'
     }
 
     print('Common variant filter')
